@@ -1,0 +1,87 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  /* Optional: copy node_modules\@fontsource\pixelify-sans\files\pixelify-sans-latin-400-normal.woff2
+     to the project root as pixelify.woff2 for the pixel font; otherwise a system font is used. */
+  @font-face { font-family: "Pixelify"; src: url("pixelify.woff2") format("woff2"); }
+
+  /* Same palette as the dashboard: dark purple frame, plum shadow, lilac ring, paper fill, deep-green ink */
+  :root { --frame: #3a1f4a; --plum: #5b3a66; --ring: #e0a1ed; --paper: #f0f0f0; --ink: #14300a; }
+
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; image-rendering: pixelated; }
+  #wrap { position: absolute; inset: 0; display: flex; align-items: flex-end; justify-content: center; padding-bottom: 14px; }
+  #wrap.flip { align-items: flex-start; padding: 14px 0 0; }
+
+  #b {
+    position: relative; width: max-content; max-width: 250px; padding: 9px 12px;
+    font: 17px/1.3 "Pixelify", "Pixelify Sans", "Segoe UI", sans-serif; text-align: center;
+    color: var(--ink); background: var(--paper);
+    /* stepped (notched-corner) pixel frame, a lilac inner ring, then a plum drop shadow below */
+    box-shadow:
+      inset 0 0 0 3px var(--ring),
+      0 -3px 0 0 var(--frame), 0 3px 0 0 var(--frame), -3px 0 0 0 var(--frame), 3px 0 0 0 var(--frame),
+      0 6px 0 0 var(--plum);
+  }
+  #b.large { font-size: 21px; max-width: 240px; }
+
+  /* Pixel tail: three stepped rows pointing down at the pet */
+  #b::before, #b::after { content: ""; position: absolute; background: var(--paper); }
+  #b::before {   /* wide row; also paints over the frame and ring so the tail opens into the bubble */
+    left: calc(50% - 6px); bottom: -3px; width: 12px; height: 3px;
+    box-shadow: 0 -3px 0 0 var(--paper), -3px 0 0 0 var(--frame), 3px 0 0 0 var(--frame);
+  }
+  #b::after {    /* narrow row plus the tip */
+    left: calc(50% - 3px); bottom: -6px; width: 6px; height: 3px;
+    box-shadow: -3px 0 0 0 var(--frame), 3px 0 0 0 var(--frame), 0 3px 0 0 var(--frame);
+  }
+
+  /* Pet near the top of the screen: bubble sits below it and the tail points up */
+  .flip #b::before { bottom: auto; top: -3px; box-shadow: 0 3px 0 0 var(--paper), -3px 0 0 0 var(--frame), 3px 0 0 0 var(--frame); }
+  .flip #b::after  { bottom: auto; top: -6px; box-shadow: -3px 0 0 0 var(--frame), 3px 0 0 0 var(--frame), 0 -3px 0 0 var(--frame); }
+
+  #rest { visibility: hidden; }   /* reserves the full size so the bubble does not grow while typing */
+</style>
+</head>
+<body>
+<div id="wrap"><div id="b"><span id="shown"></span><span id="rest"></span></div></div>
+<script>
+  let ctx = null, typer = null
+  function play(freqs, step, length, volume) {
+    try {
+      ctx = ctx || new AudioContext()
+      if (ctx.state === 'suspended') ctx.resume()
+      const t = ctx.currentTime, osc = ctx.createOscillator(), gain = ctx.createGain()
+      osc.type = 'square'
+      freqs.forEach((f, i) => osc.frequency.setValueAtTime(f, t + i * step))
+      gain.gain.setValueAtTime(volume, t)
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + length)
+      osc.connect(gain); gain.connect(ctx.destination)
+      osc.start(t); osc.stop(t + length + 0.02)
+    } catch (e) { /* audio is optional */ }
+  }
+  const blip = () => { const f = 880 * (1 + (Math.random() - 0.5) * 0.12); play([f, f * 1.5], 0.045, 0.11, 0.08) }
+  const tick = () => play([660 * (1 + (Math.random() - 0.5) * 0.08)], 0, 0.04, 0.03)
+
+  function setFlip(f) { document.getElementById('wrap').className = f ? 'flip' : '' }
+
+  // Called from the main process each time a greeting is shown.
+  function say(text, opts) {
+    clearInterval(typer)
+    setFlip(opts.flip)
+    document.getElementById('b').className = opts.large ? 'large' : ''
+    const shown = document.getElementById('shown'), rest = document.getElementById('rest')
+    shown.textContent = ''; rest.textContent = text
+    if (opts.sound) blip()
+    let i = 0
+    typer = setInterval(() => {
+      i++
+      shown.textContent = text.slice(0, i); rest.textContent = text.slice(i)
+      if (opts.sound && i % 2 === 0) tick()
+      if (i >= text.length) clearInterval(typer)
+    }, 40)
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,4 @@
+html, body, #root { margin: 0; width: 128px; height: 128px; background: transparent; overflow: hidden; user-select: none; }
+.sprite { width: 128px; height: 128px; cursor: pointer; image-rendering: pixelated; background-repeat: no-repeat; }
+
+@keyframes sprite-play { to { background-position-x: var(--end); } }
